@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acropath | Sign Up</title>
+    <style>
+        /* ... (Your existing styles remain the same) ... */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #71b7e6, #9b59b6);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container .title {
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #2c3e50;
+            letter-spacing: 1px;
+        }
+
+        .user-details {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .input-box {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .input-box label {
+            display: block;
+            margin-bottom: 8px;
+            color: #34495e;
+            font-weight: 600;
+        }
+
+        .input-box input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .input-box input:focus {
+            outline: none;
+            border-color: #9b59b6;
+            box-shadow: 0 0 8px rgba(155,89,182,0.2);
+        }
+
+        .button {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .button button {
+            padding: 14px 50px;
+            border: none;
+            border-radius: 25px;
+            background: #9b59b6;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .button button:hover {
+            background: #8e44ad;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(155,89,182,0.4);
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 25px;
+            color: #34495e;
+        }
+
+        .login-link a {
+            color: #9b59b6;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px;
+            }
+            
+            .container .title {
+                font-size: 1.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Join Acropath</div>
+
+        <form id="registration-form">
+            <div class="user-details">
+                <div class="input-box">
+                    <label>Full Name</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="input-box">
+                    <label>Email Address</label>
+                    <input type="email" name="email" required>
+                </div>
+                <div class="input-box">
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                <div class="input-box">
+                    <label>Confirm Password</label>
+                    <input type="password" name="confirmPassword" required>
+                </div>
+            </div>
+            <div class="button">
+                <button type="submit">Create Account</button>
+            </div>
+        </form>
+
+        <div class="login-link">
+            Already have an account? <a href="login.html">Login here</a>
+        </div>
+    </div>
+
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Keep your existing styles -->
+    <script>
+        document.getElementById('registration-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = {
+                name: document.querySelector('input[name="name"]').value,
+                email: document.querySelector('input[name="email"]').value,
+                password: document.querySelector('input[name="password"]').value,
+                confirmPassword: document.querySelector('input[name="confirmPassword"]').value
+            };
+
+            if (formData.password !== formData.confirmPassword) {
+                alert('Passwords do not match');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('token', data.token);
+                    window.location.href = '/dashboard';
+                } else {
+                    alert(data.error || 'Registration failed');
+                }
+            } catch (err) {
+                alert('Connection error');
+            }
+        });
+    </script>
+</body>
+</html>

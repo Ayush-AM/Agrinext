@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Submissions</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .submissions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .submission-card {
+            padding: 1rem;
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .submission-card p {
+            margin: 0.5rem 0;
+        }
+        .back-btn {
+            display: block;
+            width: 200px;
+            margin: 2rem auto 0;
+            padding: 0.8rem;
+            background: #9b59b6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .logout-btn {
+            display: block;
+            width: 100px;
+            margin: 2rem auto 0;
+            padding: 0.5rem;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>My Submissions</h1>
+        <div class="submissions-grid" id="submissions-container">
+            <!-- Submission cards will be inserted here -->
+        </div>
+        <a href="/dashboard" class="back-btn">Add New Submission</a>
+        <button class="logout-btn" id="logout-btn">Logout</button>
+    </div>
+
+    <script>
+       document.addEventListener('DOMContentLoaded', () => {
+  const token = localStorage.getItem('token');
+  if (!token) window.location.href = '/login';
+
+  async function loadSubmissions() {
+  try {
+    const response = await fetch('/api/merchant-data', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) throw new Error('Failed to fetch data');
+    const data = await response.json();
+
+    console.log('Fetched Data (Frontend):', data); // Debug: Log fetched data
+
+    const container = document.getElementById('submissions-container');
+    container.innerHTML = data.map(entry => `
+      <div class="submission-card">
+        <p><strong>Merchant Name:</strong> ${entry.merchantName}</p>
+        <p><strong>Phone Number:</strong> ${entry.phoneNumber}</p>
+        <p><strong>Crop Type:</strong> ${entry.cropType}</p>
+        <p><strong>Price:</strong> ₹${entry.priceRange}/100kg</p>
+        <p><strong>Location:</strong> ${entry.address}</p>
+        <p><small>Submitted: ${new Date(entry.createdAt).toLocaleString()}</small></p>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('Error loading submissions:', err);
+    alert('Failed to load submissions. Please try again.');
+  }
+}
+  // Logout functionality
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+  });
+
+  // Load submissions when the page loads
+  loadSubmissions();
+});
+    </script>
+</body>
+</html>
