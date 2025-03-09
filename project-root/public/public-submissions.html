@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Marketplace</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .marketplace-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .marketplace-card {
+            padding: 1.5rem;
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+            background: #ffffff;
+            transition: transform 0.3s ease;
+        }
+        .marketplace-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            border-bottom: 2px solid #9b59b6;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .card-header h3 {
+            color: #2c3e50;
+            margin: 0;
+        }
+        .card-detail {
+            margin: 0.75rem 0;
+            color: #34495e;
+        }
+        .card-detail strong {
+            color: #2c3e50;
+        }
+        .home-link {
+            display: block;
+            width: 200px;
+            margin: 2rem auto 0;
+            padding: 0.8rem;
+            background: #9b59b6;
+            color: white;
+            border-radius: 6px;
+            text-align: center;
+            text-decoration: none;
+            transition: background 0.3s ease;
+        }
+        .home-link:hover {
+            background: #8e44ad;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Agricultural Marketplace</h1>
+        <div class="marketplace-grid" id="marketplace-container">
+            <!-- Cards will be loaded here -->
+        </div>
+        <a href="/login" class="home-link">Back to Login</a>
+    </div>
+
+    <script>
+       document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const response = await fetch('/api/public-submissions');
+    if (!response.ok) throw new Error('Failed to load data');
+    
+    const submissions = await response.json();
+    console.log('Submissions:', submissions); // Debug: Log fetched data
+
+    const container = document.getElementById('marketplace-container');
+    container.innerHTML = submissions.map(sub => `
+      <div class="marketplace-card">
+        <div class="card-header">
+          <h3>${sub.publicName || sub.merchantName}</h3>
+        </div>
+        <div class="card-detail">
+          <strong>Crop Type:</strong> ${sub.cropType}
+        </div>
+        <div class="card-detail">
+          <strong>Price:</strong> ₹${sub.priceRange}/100kg
+        </div>
+        <div class="card-detail">
+          <strong>Location:</strong> ${sub.address}
+        </div>
+        <div class="card-detail">
+          <strong>Contact:</strong> ${sub.phoneNumber}
+        </div>
+        <div class="card-detail">
+          <small>Posted: ${new Date(sub.createdAt).toLocaleString()}</small>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to load marketplace data. Please try again.');
+  }
+});
+    </script>
+</body>
+</html>

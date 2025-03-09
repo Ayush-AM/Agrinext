@@ -17,8 +17,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Database Connection
 mongoose.connect(process.env.DB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .then(() => console.log('[Backend] Connected to MongoDB'))
+  .catch(err => console.error('[Backend] MongoDB connection error:', err));
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -31,7 +31,8 @@ const User = mongoose.model('User', userSchema);
 
 // Merchant Schema
 const merchantSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional for anonymous submissions
+  publicName: { type: String, required: true }, // Display name instead of real name
   merchantName: { type: String, required: true },
   phoneNumber: { type: String, required: true },
   cropType: { type: String, required: true },
@@ -42,52 +43,54 @@ const merchantSchema = new mongoose.Schema({
 
 const Merchant = mongoose.model('Merchant', merchantSchema);
 
-// Authentication Middleware
+// Enhanced Authentication Middleware
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  console.log('[Backend] Received token:', token);
+
+  if (!token) {
+    console.log('[Backend] No token provided');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('[Backend] Decoded token:', decoded);
     req.userId = decoded.userId;
     next();
   } catch (err) {
+    console.error('[Backend] Token verification error:', err);
     res.status(401).json({ error: 'Invalid token' });
   }
 };
 
 // Routes
+
+// Signup
 app.post('/api/signup', async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ error: 'All fields required' });
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
+    if (await User.findOne({ email })) return res.status(400).json({ error: 'Email already exists' });
 
-    if (await User.findOne({ email })) {
-      return res.status(400).json({ error: 'Email already exists' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashedPassword });
+    const user = new User({
+      name,
+      email,
+      password: await bcrypt.hash(password, 10)
+    });
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
-    res.status(201).json({ 
-      token, 
-      user: { 
-        id: user._id, 
-        name: user.name, 
-        email: user.email
-      } 
+    res.status(201).json({
+      token: jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' })
     });
-
   } catch (err) {
+    console.error('[Backend] Signup error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
+// Login
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -97,62 +100,73 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
-    res.json({ 
-      token, 
-      user: { 
-        id: user._id, 
-        name: user.name, 
-        email: user.email
-      } 
+    res.json({
+      token: jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' })
     });
-
   } catch (err) {
+    console.error('[Backend] Login error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Merchant Submission Route
+// Merchant Submission
 app.post('/api/merchant', authenticate, async (req, res) => {
-    try {
-      const { merchantName, phoneNumber, cropType, priceRange, address } = req.body;
-  
-      // Validate all fields
-      if (!merchantName || !phoneNumber || !cropType || !priceRange || !address) {
-        return res.status(400).json({ error: 'All fields are required' });
-      }
-  
-      // Create and save the document
-      const merchantData = new Merchant({
-        userId: req.userId,
-        merchantName: merchantName.trim(), // Ensure no whitespace
-        phoneNumber: phoneNumber.trim(),
-        cropType: cropType.trim(),
-        priceRange: parseFloat(priceRange),
-        address: address.trim()
-      });
-  
-      await merchantData.save();
-      console.log('Saved Data (Full):', merchantData); // Debug: Log full saved data
-      res.status(201).json({ message: 'Details saved successfully' });
-    } catch (err) {
-      console.error('Error saving merchant data:', err);
-      res.status(500).json({ error: 'Server error' });
+  try {
+    const { merchantName, phoneNumber, cropType, priceRange, address } = req.body;
+    if (!merchantName || !phoneNumber || !cropType || !priceRange || !address) {
+      return res.status(400).json({ error: 'All fields required' });
     }
-  });
 
-// Fetch Merchant Data Route
+    const merchant = new Merchant({
+      userId: req.userId,
+      publicName: merchantName, // Use merchantName as publicName
+      merchantName,
+      phoneNumber,
+      cropType,
+      priceRange: parseFloat(priceRange),
+      address
+    });
+    await merchant.save();
+
+    res.status(201).json({ message: 'Submission successful' });
+  } catch (err) {
+    console.error('[Backend] Merchant submission error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Fetch User-Specific Submissions (My Submissions)
 app.get('/api/merchant-data', authenticate, async (req, res) => {
   try {
-    const merchantData = await Merchant.find({ userId: req.userId });
-    console.log('Fetched Merchant Data:', merchantData); // Debug: Log fetched data
+    console.log(`[Backend] Fetching data for user: ${req.userId}`);
+    
+    const merchantData = await Merchant.find({ userId: req.userId })
+      .lean()
+      .exec();
+
+    console.log(`[Backend] Found ${merchantData.length} records`);
     res.json(merchantData);
   } catch (err) {
+    console.error('[Backend] Database error:', err);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: err.message 
+    });
+  }
+});
+
+// Fetch All Submissions (Public Marketplace)
+app.get('/api/public-submissions', async (req, res) => {
+  try {
+    const submissions = await Merchant.find().sort({ createdAt: -1 });
+    res.json(submissions);
+  } catch (err) {
+    console.error('[Backend] Public submissions error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Serve Frontend
+// Serve Frontend Pages
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -169,14 +183,9 @@ app.get('/submissions', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'submissions.html'));
 });
 
-app.get('/api/merchant-data', authenticate, async (req, res) => {
-    try {
-      const merchantData = await Merchant.find({ userId: req.userId });
-      console.log('Fetched Merchant Data (Raw):', merchantData); // Debug: Log raw data
-      res.json(merchantData);
-    } catch (err) {
-      res.status(500).json({ error: 'Server error' });
-    }
-  });
+app.get('/public-submissions', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public-submissions.html'));
+});
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Start the server
+app.listen(PORT, () => console.log(`[Backend] Server running on port ${PORT}`));

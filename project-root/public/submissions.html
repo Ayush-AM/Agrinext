@@ -12,110 +12,142 @@
             background: #f5f5f5;
         }
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 2rem auto;
             padding: 2rem;
             background: white;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         h1 {
             color: #2c3e50;
             margin-bottom: 2rem;
             text-align: center;
         }
-        .submissions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 1rem;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2rem;
         }
-        .submission-card {
-            padding: 1rem;
-            border: 1px solid #ecf0f1;
-            border-radius: 8px;
-            background: #f9f9f9;
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
         }
-        .submission-card p {
-            margin: 0.5rem 0;
-        }
-        .back-btn {
-            display: block;
-            width: 200px;
-            margin: 2rem auto 0;
-            padding: 0.8rem;
-            background: #9b59b6;
+        th {
+            background-color: #9b59b6;
             color: white;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .btn {
+            padding: 0.8rem 1.5rem;
             border: none;
             border-radius: 6px;
-            text-align: center;
             cursor: pointer;
             text-decoration: none;
-        }
-        .logout-btn {
-            display: block;
-            width: 100px;
-            margin: 2rem auto 0;
-            padding: 0.5rem;
-            background: #e74c3c;
             color: white;
-            border: none;
-            border-radius: 6px;
-            text-align: center;
-            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s ease;
+        }
+        .btn-primary {
+            background: #9b59b6;
+        }
+        .btn-primary:hover {
+            background: #8e44ad;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>My Submissions</h1>
-        <div class="submissions-grid" id="submissions-container">
-            <!-- Submission cards will be inserted here -->
+        <table id="submissions-table">
+            <thead>
+                <tr>
+                    <th>Merchant Name</th>
+                    <th>Phone Number</th>
+                    <th>Crop Type</th>
+                    <th>Price (₹/100kg)</th>
+                    <th>Location</th>
+                    <th>Submitted On</th>
+                </tr>
+            </thead>
+            <tbody id="submissions-container"> <!-- Corrected container ID -->
+                <!-- Submission rows will be inserted here -->
+            </tbody>
+        </table>
+        <div class="actions">
+            <a href="/dashboard" class="btn btn-primary">Add New Submission</a>
+            <button class="btn btn-danger" id="logout-btn">Logout</button>
         </div>
-        <a href="/dashboard" class="back-btn">Add New Submission</a>
-        <button class="logout-btn" id="logout-btn">Logout</button>
     </div>
 
     <script>
-       document.addEventListener('DOMContentLoaded', () => {
-  const token = localStorage.getItem('token');
-  if (!token) window.location.href = '/login';
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) window.location.href = '/login';
 
-  async function loadSubmissions() {
-  try {
-    const response = await fetch('/api/merchant-data', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+            async function loadSubmissions() {
+                try {
+                    console.log('[Frontend] Fetching submissions...');
+                    const response = await fetch('/api/merchant-data', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
 
-    if (!response.ok) throw new Error('Failed to fetch data');
-    const data = await response.json();
+                    console.log('[Frontend] Response status:', response.status);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error('[Frontend] Server Error:', errorData);
+                        throw new Error(errorData.error || 'Failed to fetch data');
+                    }
 
-    console.log('Fetched Data (Frontend):', data); // Debug: Log fetched data
+                    const data = await response.json();
+                    console.log('[Frontend] Received data:', data);
 
-    const container = document.getElementById('submissions-container');
-    container.innerHTML = data.map(entry => `
-      <div class="submission-card">
-        <p><strong>Merchant Name:</strong> ${entry.merchantName}</p>
-        <p><strong>Phone Number:</strong> ${entry.phoneNumber}</p>
-        <p><strong>Crop Type:</strong> ${entry.cropType}</p>
-        <p><strong>Price:</strong> ₹${entry.priceRange}/100kg</p>
-        <p><strong>Location:</strong> ${entry.address}</p>
-        <p><small>Submitted: ${new Date(entry.createdAt).toLocaleString()}</small></p>
-      </div>
-    `).join('');
-  } catch (err) {
-    console.error('Error loading submissions:', err);
-    alert('Failed to load submissions. Please try again.');
-  }
-}
-  // Logout functionality
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('token');
-    window.location.href = '/login';
-  });
+                    const container = document.getElementById('submissions-container');
+                    
+                    if (data.length === 0) {
+                        container.innerHTML = '<tr><td colspan="6">No submissions found.</td></tr>';
+                    } else {
+                        container.innerHTML = data.map(entry => `
+                            <tr>
+                                <td>${entry.merchantName}</td>
+                                <td>${entry.phoneNumber}</td>
+                                <td>${entry.cropType}</td>
+                                <td>₹${entry.priceRange}</td>
+                                <td>${entry.address}</td>
+                                <td>${new Date(entry.createdAt).toLocaleString()}</td>
+                            </tr>
+                        `).join('');
+                    }
+                } catch (err) {
+                    console.error('[Frontend] Error:', err);
+                    alert(err.message || 'Failed to load submissions');
+                }
+            }
 
-  // Load submissions when the page loads
-  loadSubmissions();
-});
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+            });
+
+            loadSubmissions();
+        });
     </script>
 </body>
 </html>
